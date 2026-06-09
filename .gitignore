@@ -1,0 +1,19 @@
+node_modules/
+AGENTS.md
+CLAUDE.md
+DESIGN.md
+references/
+
+# Build output
+dist/
+# Environment
+.env
+.env.local
+.env.*.local
+# OS / editor
+.DS_Store
+# Tooling
+.claude/
+# Logs
+*.log
+npm-debug.log*

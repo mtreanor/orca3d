@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ARPE</title>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body { background: #0a0a0f; overflow: hidden; font-family: monospace; }
+      #canvas { width: 100vw; height: 100vh; display: block; touch-action: none; }
+      #hud {
+        position: fixed; top: 12px; left: 12px;
+        color: #7af; font-size: 12px; line-height: 1.8;
+        pointer-events: none; user-select: none;
+      }
+      #midi-status {
+        position: fixed; top: 12px; right: 12px;
+        color: #555; font-size: 11px;
+        pointer-events: none;
+      }
+      #hint-display {
+        position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
+        color: #99bbdd; font-size: 13px; letter-spacing: 0.04em;
+        pointer-events: none; user-select: none;
+        min-height: 1em;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="canvas"></canvas>
+    <div id="hud">
+      <div id="bpm-display">BPM: 90</div>
+      <div id="frame-display">FRAME: 0</div>
+      <div id="layer-display">LAYER: 0</div>
+      <div id="cursor-display">POS: 0,0,0</div>
+    </div>
+    <div id="midi-status">MIDI: --</div>
+    <div id="hint-display"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
