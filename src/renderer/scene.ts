@@ -2,7 +2,8 @@ import {
   Engine, Scene, ArcRotateCamera, HemisphericLight, GlowLayer,
   Vector3, Color3, Color4,
 } from "@babylonjs/core";
-import { gridCenter } from "./layout.js";
+import { gridCenter, CELL_STRIDE } from "./layout.js";
+import { THEME } from "./theme.js";
 import type { GridDimensions } from "./gridView.js";
 
 export interface ArpeSceneObjects {
@@ -16,17 +17,18 @@ export function createScene(canvas: HTMLCanvasElement, dims: GridDimensions): Ar
   const engine = new Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true });
   const scene  = new Scene(engine);
 
-  scene.clearColor = new Color4(0.04, 0.04, 0.08, 1.0);
+  scene.clearColor = Color4.FromHexString(THEME.sceneBackground + "ff");
 
   const center = gridCenter(dims.width, dims.height, dims.depth);
   const target = new Vector3(center.x, center.y, center.z);
 
+  const worldSpan = Math.max(dims.width, dims.height, dims.depth) * CELL_STRIDE;
   const camera = new ArcRotateCamera("cam", -Math.PI * 0.35, Math.PI * 0.38, 32, target, scene);
   camera.lowerRadiusLimit    = 5;
-  camera.upperRadiusLimit    = 60;
+  camera.upperRadiusLimit    = worldSpan * 1.5;
   camera.lowerBetaLimit      = 0.1;          // prevent flipping under the grid
   camera.upperBetaLimit      = Math.PI * 0.9;
-  camera.panningDistanceLimit = 30;          // can't pan more than 30 units from center
+  camera.panningDistanceLimit = worldSpan * 0.65;
   camera.panningOriginTarget  = target.clone();
   camera.panningInertia       = 0.5;         // decelerate faster (default is 0.9)
   camera.attachControl(canvas, true);
@@ -44,8 +46,8 @@ export function createScene(canvas: HTMLCanvasElement, dims: GridDimensions): Ar
 
   const ambient = new HemisphericLight("amb", new Vector3(0, 1, 0), scene);
   ambient.intensity   = 0.4;
-  ambient.diffuse     = new Color3(0.7, 0.8, 1.0);
-  ambient.groundColor = new Color3(0.1, 0.1, 0.2);
+  ambient.diffuse     = Color3.FromHexString(THEME.ambientSkyColor);
+  ambient.groundColor = Color3.FromHexString(THEME.ambientGroundColor);
 
   const glow = new GlowLayer("glow", scene);
   glow.intensity = 0.25;

@@ -1,6 +1,7 @@
 import { DynamicTexture, Scene } from "@babylonjs/core";
 import type { CellKind, CellFacing } from "./gridView.js";
 import { textColor } from "./cellColors.js";
+import { THEME } from "./theme.js";
 
 const TEX_SIZE = 128;
 
@@ -23,7 +24,7 @@ export function getCharTexture(
   const ctx  = tex.getContext() as unknown as CanvasRenderingContext2D;
   const half = TEX_SIZE / 2;
 
-  ctx.fillStyle = "#000008";
+  ctx.fillStyle = THEME.textureBackground;
   ctx.fillRect(0, 0, TEX_SIZE, TEX_SIZE);
 
   ctx.fillStyle    = textColor(kind);
@@ -47,7 +48,7 @@ export function getEmptyTexture(scene: Scene): DynamicTexture {
   if (tex) return tex;
   tex = new DynamicTexture(`ct_empty`, { width: 8, height: 8 }, scene, false);
   const ctx = tex.getContext();
-  ctx.fillStyle = "#000008";
+  ctx.fillStyle = THEME.textureBackground;
   ctx.fillRect(0, 0, 8, 8);
   tex.update();
   cache.set(key, tex);

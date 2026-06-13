@@ -22,7 +22,7 @@ export class K extends Cell {
   }
 
   override refreshDynamicInputs(): boolean {
-    const length = this.getIntInput("length", 1);
+    const length = this.getIntInput("length", 0, 1);
     if (length === this.prevLength) return false;
     const oldLength = this.prevLength;
     this.removeSelfAsDataParent();
@@ -48,7 +48,7 @@ export class K extends Cell {
     super.update();
     if (!this.active) return;
 
-    const length = this.getIntInput("length", 1);
+    const length = this.getIntInput("length", 0, 1);
     this.refreshDynamicInputs();
 
     if (this._changed()) {

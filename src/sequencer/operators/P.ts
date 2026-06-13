@@ -28,7 +28,7 @@ export class P extends Cell {
     if (!this.active) return;
 
     const key    = this.getIntInput("key", 0);
-    const length = this.getIntInput("length", 1);
+    const length = this.getIntInput("length", 0, 1);
     const input  = this.readValueFromOffset(this.inputs.get("input")!);
     const safeKey = key % length;
 

@@ -3,7 +3,7 @@ import { vec3 } from "../vec3.js";
 
 export class D extends Cell {
   static SLOT_DESCRIPTIONS: Record<string, string> = {
-    rate: "interval multiplier", mod: "cycle length", star: "trigger pulse output",
+    rate: "interval multiplier (default 1)", mod: "cycle length (default 1, 1 = every frame)", star: "trigger pulse output",
   };
   override slotDescription(n: string) { return D.SLOT_DESCRIPTIONS[n] ?? null; }
 
@@ -17,10 +17,11 @@ export class D extends Cell {
   update() {
     super.update();
     if (!this.active) return;
-    const rate = this.getIntInput("rate", 1);
-    const mod = this.getIntInput("mod", 9);
-    if (this.seqFrame % (mod * rate) === 0 || mod === 1) {
-      this.writeOutput("star", "*");
-    }
+    const rate = this.getIntInput("rate", 0, 1);
+    const mod = this.getIntInput("mod", 0, 1);
+    // Bang port: writes * when firing and clears the cell otherwise, exactly
+    // like Orca's bang() — this is what consumes leftover stars between fires.
+    const fire = this.seqFrame % (mod * rate) === 0 || mod === 1;
+    this.writeOutput("star", fire ? "*" : "");
   }
 }

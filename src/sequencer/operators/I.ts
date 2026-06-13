@@ -18,10 +18,11 @@ export class I extends Cell {
   update() {
     super.update();
     if (!this.active) return;
-    const step = this.getIntInput("step", 1);
-    const mod = this.getIntInput("mod", 1);
+    const step = this.getIntInput("step", 0);
+    const mod = this.getIntInput("mod", 0);
     const val = this.getIntOutput("output", 0);
-    const output = (val + step) % (mod > 0 ? mod : 36);
-    this.writeOutput("output", Cell.base36(output));
+    // Orca: no modulo means the counter pins at 0
+    const output = mod ? Cell.base36((val + step) % mod) : "0";
+    this.writeOutput("output", this.sensitiveCase(output));
   }
 }

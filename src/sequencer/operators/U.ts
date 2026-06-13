@@ -19,9 +19,10 @@ export class U extends Cell {
   update() {
     super.update();
     if (!this.active) return;
-    const step = this.getIntInput("step", 1);
-    const max  = this.getIntInput("max", 8);
+    const step = this.getIntInput("step", 0, 0);
+    const max  = this.getIntInput("max", 0, 1);
     const bucket = (step * (this.seqFrame + max - 1)) % max + step;
-    if (bucket >= max) this.writeOutput("star", "*");
+    // Bang port: clears the output cell when not firing (Orca bang())
+    this.writeOutput("star", bucket >= max ? "*" : "");
   }
 }

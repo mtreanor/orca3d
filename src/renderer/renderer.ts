@@ -1,8 +1,9 @@
 import type { GridView } from "./gridView.js";
-import type { CursorState } from "../input/keyboard.js";
+import type { CursorState, SelectionState } from "../input/keyboard.js";
 import { createScene } from "./scene.js";
 import { CellPool } from "./cellPool.js";
 import { Cursor3D } from "./cursor3d.js";
+import { SelectionBox3D } from "./selectionBox3D.js";
 import { cellToWorld, CELL_STRIDE, LAYER_STRIDE } from "./layout.js";
 import { Vector3, Animation, Scene, ArcRotateCamera, PointerEventTypes, Matrix } from "@babylonjs/core";
 
@@ -11,6 +12,7 @@ const CENTER_RADIUS = 22;
 export class Renderer {
   private pool: CellPool;
   private cursor3d: Cursor3D;
+  private selectionBox: SelectionBox3D;
   private camera: ArcRotateCamera;
   private scene: Scene;
   private cursorState: CursorState;
@@ -29,17 +31,20 @@ export class Renderer {
     this.cursorState = cursorState;
     this.dims        = { width: grid.width, height: grid.height, depth: grid.depth };
 
-    this.pool     = new CellPool(scene, glow, grid);
-    this.cursor3d = new Cursor3D(scene);
+    this.pool         = new CellPool(scene, glow, grid);
+    this.cursor3d     = new Cursor3D(scene);
+    this.selectionBox = new SelectionBox3D(scene);
 
-    for (let z = 0; z < grid.depth; z++)
-      for (let y = 0; y < grid.height; y++)
-        for (let x = 0; x < grid.width; x++) {
-          const view = grid.getCell(x, y, z);
-          if (view.kind !== "empty") this.pool.update(x, y, z, view);
-        }
+    // Sparse initial render — only visit cells that actually have content.
+    grid.eachNonEmptyCell((x, y, z, view) => this.pool.update(x, y, z, view));
 
     grid.subscribe((x, y, z, view) => this.pool.update(x, y, z, view));
+
+    grid.onDimensionsChange = (dims) => {
+      this.dims = dims;
+      this.pool.resize(dims);
+      this._updateCameraLimits(dims);
+    };
 
     this.cursor3d.setPosition(cursorState.x, cursorState.y, cursorState.z);
     this.pool.setActivePlane(cursorState);
@@ -56,6 +61,17 @@ export class Renderer {
   updateCursor(cursorState: CursorState) {
     this.cursor3d.setPosition(cursorState.x, cursorState.y, cursorState.z);
     this.pool.setActivePlane(cursorState);
+  }
+
+  setSelection(sel: SelectionState | null) {
+    if (sel === null) {
+      this.selectionBox.hide();
+    } else {
+      this.selectionBox.setRegion(
+        sel.anchor.x, sel.anchor.y, sel.anchor.z,
+        sel.cursor.x, sel.cursor.y, sel.cursor.z,
+      );
+    }
   }
 
   centerOn(x: number, y: number, z: number) {
@@ -148,8 +164,15 @@ export class Renderer {
     ];
   }
 
+  private _updateCameraLimits(dims: { width: number; height: number; depth: number }) {
+    const worldSpan = Math.max(dims.width, dims.height, dims.depth) * CELL_STRIDE;
+    this.camera.upperRadiusLimit    = worldSpan * 1.5;
+    this.camera.panningDistanceLimit = worldSpan * 0.65;
+  }
+
   dispose() {
     this.pool.dispose();
     this.cursor3d.dispose();
+    this.selectionBox.dispose();
   }
 }

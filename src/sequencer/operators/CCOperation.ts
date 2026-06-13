@@ -20,13 +20,13 @@ export class CCOperation extends Cell {
     if (!this.active) return;
     if (!this.touchingBang()) return;
 
-    const channel  = this.getIntInput("channel", -1);
-    const knob     = this.getIntInput("knob", -1);
-    const rawValue = this.getIntInput("value", -1);
+    // Orca requires channel and knob; an empty value reads as 0
+    const channel = this.getIntInput("channel", -1);
+    const knob    = this.getIntInput("knob", -1);
+    if (channel < 0 || channel > 15 || knob < 0) return;
 
-    if (channel >= 0 && channel < 16 && knob !== -1 && rawValue !== -1) {
-      const val = Math.ceil((127 * rawValue) / 35);
-      this.enqueueMidi({ channel, note: knob, velocity: val, durationMs: 0 });
-    }
+    const rawValue = this.getIntInput("value", 0, 0);
+    const val = Math.ceil((127 * rawValue) / 35);
+    this.enqueueMidi({ channel, note: knob, velocity: val, durationMs: 0 });
   }
 }

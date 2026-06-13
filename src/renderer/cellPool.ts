@@ -7,6 +7,7 @@ import type { CursorState } from "../input/keyboard.js";
 import { cellToWorld, layerOpacity, CELL_SIZE } from "./layout.js";
 import { getCellColors, KIND_GLOW_INTENSITY } from "./cellColors.js";
 import { getCharTexture } from "./textureCache.js";
+import { THEME } from "./theme.js";
 
 const GHOST_SIZE   = CELL_SIZE * 0.35;
 const PLANE_SIZE   = CELL_SIZE * 0.9;
@@ -26,6 +27,9 @@ export class CellPool {
   private glow:  GlowLayer;
   private dims:  GridDimensions;
 
+  // Cap background-grid instances so a very large grid doesn't create 100k+ dot meshes.
+  private static readonly MAX_BG_SIDE = 200;
+
   // Ghost cells → small wireframe box
   private ghostMeshes = new Map<string, Mesh>();
   private ghostMats   = new Map<string, StandardMaterial>();
@@ -42,7 +46,7 @@ export class CellPool {
 
   // MIDI flash overlays
   private flashEntries = new Map<string, { mesh: Mesh; mat: StandardMaterial; startTime: number }>();
-  private static readonly FLASH_DURATION = 400;
+  private static readonly FLASH_DURATION = 250;
 
   // Background grid
   private bgMaster:    Mesh | null          = null;
@@ -172,8 +176,8 @@ export class CellPool {
         const pos = cellToWorld(x, y, z);
         const mesh = MeshBuilder.CreateBox(`fl_${key}`, { size: CELL_SIZE * 1.02 }, this.scene);
         const mat  = new StandardMaterial(`flMat_${key}`, this.scene);
-        mat.diffuseColor    = new Color3(0, 0, 0);
-        mat.emissiveColor   = new Color3(0.9, 0.75, 0.05);
+        mat.diffuseColor    = Color3.FromHexString(THEME.midiFlashDiffuse);
+        mat.emissiveColor   = Color3.FromHexString(THEME.midiFlashEmissive);
         mat.alpha           = 0;
         mat.backFaceCulling = false;
         mesh.material   = mat;
@@ -192,7 +196,7 @@ export class CellPool {
       if (t >= 1) {
         expired.push(key);
       } else {
-        entry.mat.alpha = 0.5 * (1 - t);
+        entry.mat.alpha = 0.25 * (1 - t);
       }
     }
     for (const key of expired) {
@@ -265,12 +269,28 @@ export class CellPool {
     if (mat)  { mat.dispose(); this.boxMats.delete(key); }
   }
 
+  resize(dims: GridDimensions) {
+    this.dims = dims;
+    const cap  = CellPool.MAX_BG_SIDE;
+    const need = Math.min(Math.max(dims.width, dims.depth), cap) * Math.min(dims.height, cap);
+    if (need > this.bgInstances.length) {
+      for (const inst of this.bgInstances) inst.dispose();
+      this.bgInstances = [];
+      for (let i = 0; i < need; i++) {
+        const inst = this.bgMaster!.createInstance(`bgDot_${i}`);
+        inst.isPickable = false;
+        this.bgInstances.push(inst);
+      }
+    }
+    this._repositionBackground();
+  }
+
   private _buildBackgroundGrid() {
     const DOT = 0.22;
     this.bgMat = new StandardMaterial("bgMat", this.scene);
-    this.bgMat.diffuseColor    = new Color3(0.10, 0.12, 0.20);
-    this.bgMat.emissiveColor   = new Color3(0.03, 0.04, 0.08);
-    this.bgMat.alpha           = 0.18;
+    this.bgMat.diffuseColor    = Color3.FromHexString(THEME.gridDotDiffuse);
+    this.bgMat.emissiveColor   = Color3.FromHexString(THEME.gridDotEmissive);
+    this.bgMat.alpha           = THEME.gridDotAlpha;
     this.bgMat.backFaceCulling = false;
 
     this.bgMaster = MeshBuilder.CreateBox("bgMaster", { size: DOT }, this.scene);
@@ -278,8 +298,9 @@ export class CellPool {
     this.bgMaster.isPickable = false;
     this.bgMaster.isVisible  = false;
 
-    const maxSide = Math.max(this.dims.width, this.dims.depth);
-    const count   = maxSide * this.dims.height;
+    const cap     = CellPool.MAX_BG_SIDE;
+    const maxSide = Math.min(Math.max(this.dims.width, this.dims.depth), cap);
+    const count   = maxSide * Math.min(this.dims.height, cap);
     for (let i = 0; i < count; i++) {
       const inst = this.bgMaster.createInstance(`bgDot_${i}`);
       inst.isPickable = false;
@@ -289,12 +310,13 @@ export class CellPool {
   }
 
   private _repositionBackground() {
-    const { width, height, depth } = this.dims;
-    const sliceA = this.planeMode === "xy" ? width : depth;
+    const cap    = CellPool.MAX_BG_SIDE;
+    const sliceA = Math.min(this.planeMode === "xy" ? this.dims.width : this.dims.depth, cap);
+    const sliceB = Math.min(this.dims.height, cap);
 
     let i = 0;
     for (let a = 0; a < sliceA; a++) {
-      for (let b = 0; b < height; b++) {
+      for (let b = 0; b < sliceB; b++) {
         const p = this.planeMode === "xy"
           ? cellToWorld(a, b, this.sliceIndex)
           : cellToWorld(this.sliceIndex, b, a);

@@ -2,7 +2,7 @@ import { Sequencer } from "./sequencer/sequencer.js";
 import { Scheduler } from "./clock/scheduler.js";
 import { MidiOut } from "./midi/midiOut.js";
 import { KeyboardInput } from "./input/keyboard.js";
-import { loadPatch } from "./storage/patches.js";
+import { loadPatch, patchContentCenter, saveAsFile, uploadPatch, uploadOrca } from "./storage/patches.js";
 import { GridAdapter } from "./renderer/gridView.js";
 import type { GridView } from "./renderer/gridView.js";
 import { Renderer } from "./renderer/renderer.js";
@@ -10,7 +10,7 @@ import { Renderer } from "./renderer/renderer.js";
 async function main() {
   const canvas = document.getElementById("canvas") as HTMLCanvasElement;
 
-  const seq   = new Sequencer(50, 50, 50);
+  const seq   = new Sequencer(75, 75, 75);
   const midi  = new MidiOut();
   const sched = new Scheduler(seq, midi);
   const keys  = new KeyboardInput(seq, sched);
@@ -25,7 +25,7 @@ async function main() {
 
   grid.setCursor(keys.cursor.x, keys.cursor.y, keys.cursor.z);
 
-  renderer.onCellPick  = (x, y, z) => keys.jumpTo(x, y, z);
+  renderer.onCellPick  = (x, y, z) => { keys.jumpTo(x, y, z); keys.clearSelection(); };
   grid.onMidiFlash     = (positions) => renderer.flashCells(positions);
 
   keys.onCursorMove = () => {
@@ -35,16 +35,28 @@ async function main() {
     updateHint(grid, keys);
   };
 
+  keys.onSelectionChange = (sel) => {
+    renderer.setSelection(sel);
+  };
+
   keys.onCenterCamera = () => {
     renderer.centerOn(keys.cursor.x, keys.cursor.y, keys.cursor.z);
   };
 
   keys.getCameraAlpha = () => renderer.getCameraAlpha();
 
+  document.getElementById("btn-save")?.addEventListener("click", () => saveAsFile(seq).catch(() => {}));
+  document.getElementById("btn-load")?.addEventListener("click", () => {
+    uploadPatch(seq).then(() => focusPatchContent(seq, keys, renderer)).catch(err => console.error("Load failed:", err));
+  });
+  document.getElementById("btn-load-orca")?.addEventListener("click", () =>
+    uploadOrca(seq, keys.cursor.x, keys.cursor.y, keys.cursor.z, keys.cursor.planeMode).catch(() => {})
+  );
+
   const midiOk = await midi.init();
   updateMidiStatus(midiOk, midi.portNames);
 
-  loadPatch(seq);
+  if (loadPatch(seq)) focusPatchContent(seq, keys, renderer);
 
   setInterval(() => updateHUD(seq, keys), 100);
 
@@ -77,6 +89,14 @@ function updateHint(grid: GridView, keys: KeyboardInput) {
 function setText(id: string, text: string) {
   const el = document.getElementById(id);
   if (el) el.textContent = text;
+}
+
+function focusPatchContent(seq: Sequencer, keys: KeyboardInput, renderer: Renderer) {
+  const center = patchContentCenter(seq);
+  if (!center) return;
+  keys.jumpTo(center.x, center.y, center.z);
+  keys.clearSelection();
+  renderer.centerOn(center.x, center.y, center.z);
 }
 
 main().catch(console.error);

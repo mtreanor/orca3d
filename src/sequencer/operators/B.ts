@@ -19,6 +19,6 @@ export class B extends Cell {
     if (!this.active) return;
     const a = this.getIntInput("a", 0);
     const b = this.getIntInput("b", 0);
-    this.writeOutput("output", Cell.base36(Math.abs(b - a)));
+    this.writeOutput("output", this.sensitiveCase(Cell.base36(Math.abs(b - a))));
   }
 }

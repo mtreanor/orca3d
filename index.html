@@ -24,6 +24,18 @@
         pointer-events: none; user-select: none;
         min-height: 1em;
       }
+      #file-buttons {
+        position: fixed; bottom: 10px; right: 12px;
+        display: flex; gap: 8px;
+      }
+      #file-buttons button {
+        background: none; border: none;
+        color: #556677; font-family: monospace; font-size: 11px;
+        cursor: pointer; padding: 3px 5px;
+        letter-spacing: 0.06em;
+        transition: color 0.15s;
+      }
+      #file-buttons button:hover { color: #7af; }
     </style>
   </head>
   <body>
@@ -36,6 +48,11 @@
     </div>
     <div id="midi-status">MIDI: --</div>
     <div id="hint-display"></div>
+    <div id="file-buttons">
+      <button id="btn-load-orca">load orca</button>
+      <button id="btn-load">load</button>
+      <button id="btn-save">save</button>
+    </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

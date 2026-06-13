@@ -61,20 +61,39 @@ export class Cell {
     return seq.getCell(p.x, p.y, p.z).value;
   }
 
-  getIntInput(name: string, defVal: number): number {
+  // Mirrors Orca `listen(port, true)`: defVal applies when the cell is empty
+  // or holds '*', then optional clamp is applied. Orca also supports per-port
+  // `default` glyphs (e.g. midi velocity 'f'); pass that as defVal here.
+  getIntInput(name: string, defVal = 0, min?: number, max?: number): number {
     const offset = this.inputs.get(name);
     if (!offset) return defVal;
     const p = addVec3(this.position, offset);
-    const v = Cell.getIntFromString(seq.getCell(p.x, p.y, p.z).value);
-    return v === 0 ? defVal : v;
+    const raw = seq.getCell(p.x, p.y, p.z).value;
+    // Orca's listen treats '*' like an empty cell for value reads
+    let v = raw === "" || raw === "*" ? defVal : Cell.getIntFromString(raw);
+    if (min !== undefined && v < min) v = min;
+    if (max !== undefined && v > max) v = max;
+    return v;
   }
 
-  getIntOutput(name: string, defVal: number): number {
+  getIntOutput(name: string, defVal = 0): number {
     const offset = this.outputs.get(name);
     if (!offset) return defVal;
     const p = addVec3(this.position, offset);
-    const v = Cell.getIntFromString(seq.getCell(p.x, p.y, p.z).value);
-    return v === 0 ? defVal : v;
+    const raw = seq.getCell(p.x, p.y, p.z).value;
+    return raw === "" || raw === "*" ? defVal : Cell.getIntFromString(raw);
+  }
+
+  // Orca "sensitive" outputs: the result is uppercased when the cell one step
+  // along `forward` (the east operand at default orientation) holds an
+  // uppercase letter. This is how patches produce natural notes (C vs c).
+  protected sensitiveCase(val: string): string {
+    const p = addVec3(this.position, this.forward);
+    const g = seq.getCell(p.x, p.y, p.z).value;
+    if (g === "") return val;
+    const ch = g[0];
+    if (ch.toLowerCase() === ch.toUpperCase()) return val; // not a letter
+    return ch === ch.toUpperCase() ? val.toUpperCase() : val;
   }
 
   // Write a base36 value to a named output cell
@@ -91,6 +110,10 @@ export class Cell {
 
   protected clearAt(x: number, y: number, z: number) {
     seq.clearCell(x, y, z);
+  }
+
+  protected reorientAt(x: number, y: number, z: number, fwdX: number, fwdZ: number) {
+    seq.reorientOperator(x, y, z, fwdX, fwdZ);
   }
 
   protected get seqFrame(): number { return seq.frame; }
@@ -183,6 +206,23 @@ export class Cell {
     return null;
   }
 
+  // Reorient the operator's forward vector and input offsets to face (fwdX, 0, fwdZ)
+  // WITHOUT moving the argument cells in the grid. Used when restoring a saved patch
+  // (where cell values sit at their original absolute positions) and when loading ORCA
+  // content into a plane whose column axis differs from the default +X direction.
+  reorient(fwdX: number, fwdZ: number) {
+    if (this.forward.x === fwdX && this.forward.z === fwdZ) return;
+    this.removeSelfAsDataParent();
+    // Y_NEG cycles the four orientations: +X → +Z → -X → -Z → +X
+    for (let guard = 0; guard < 4 && (this.forward.x !== fwdX || this.forward.z !== fwdZ); guard++) {
+      this.forward = rotateVector90(this.forward, "Y_NEG");
+      const rotated = new Map<string, Vec3>();
+      for (const [key, offset] of this.inputs.entries()) rotated.set(key, rotateVector90(offset, "Y_NEG"));
+      this.inputs = rotated;
+    }
+    this.addSelfAsDataParent();
+  }
+
   private _rotateMap(map: Map<string, Vec3>, dir: RotateDir) {
     const entries = Array.from(map.entries());
     this.removeSelfAsDataParent();
@@ -195,7 +235,9 @@ export class Cell {
       rotated.set(key, newOffset);
       const newPos = addVec3(this.position, newOffset);
       seq.clearCell(oldPos.x, oldPos.y, oldPos.z);
-      seq.modifyCell(newPos.x, newPos.y, newPos.z, oldCell.value);
+      // Only move content that actually exists — writing "" to newPos would
+      // clobber whatever was already there (e.g. argument values placed before rotation).
+      if (oldCell.value !== "") seq.modifyCell(newPos.x, newPos.y, newPos.z, oldCell.value);
     }
 
     map.clear();

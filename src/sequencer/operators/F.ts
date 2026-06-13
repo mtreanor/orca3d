@@ -20,6 +20,7 @@ export class F extends Cell {
     if (!this.active) return;
     const a = this.readValueFromOffset(this.inputs.get("a")!);
     const b = this.readValueFromOffset(this.inputs.get("b")!);
-    if (a === b) this.writeOutput("star", "*");
+    // Bang port: clears the output cell when the condition is false (Orca bang())
+    this.writeOutput("star", a === b ? "*" : "");
   }
 }

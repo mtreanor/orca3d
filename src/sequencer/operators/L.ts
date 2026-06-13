@@ -20,7 +20,6 @@ export class L extends Cell {
     if (!this.active) return;
     const a = this.getIntInput("a", 0);
     const b = this.getIntInput("b", 0);
-    // Use base36 to stay consistent with other operators
-    this.writeOutput("output", Cell.base36(Math.min(a, b)));
+    this.writeOutput("output", this.sensitiveCase(Cell.base36(Math.min(a, b))));
   }
 }

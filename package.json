@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "npx tsx tests/semantics.ts"
   },
   "dependencies": {
     "@babylonjs/core": "^7.0.0",

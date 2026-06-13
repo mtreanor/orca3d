@@ -20,12 +20,12 @@ export class Z extends Cell {
     super.update();
     if (!this.active) return;
 
-    const rate   = this.getIntInput("rate", 1);
+    const rate   = this.getIntInput("rate", 0);
     const target = this.getIntInput("target", 0);
     const val    = this.getIntOutput("output", 0);
 
-    // Straight from Orca source
+    // Straight from Orca source (empty rate = 0 = frozen, as in the reference)
     const mod    = val <= target - rate ? rate : val >= target + rate ? -rate : target - val;
-    this.writeOutput("output", Cell.base36(val + mod));
+    this.writeOutput("output", this.sensitiveCase(Cell.base36(val + mod)));
   }
 }

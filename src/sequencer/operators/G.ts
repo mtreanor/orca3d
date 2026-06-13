@@ -20,14 +20,16 @@ export class G extends Cell {
   constructor(x: number, y: number, z: number) {
     super(x, y, z);
     this.type = "G";
-    this.inputs.set("x", vec3(-4, 0, 0));
-    this.inputs.set("y", vec3(-3, 0, 0));
-    this.inputs.set("z", vec3(-2, 0, 0));
+    // z is the extra 3D operand and sits farthest from the operator, so the
+    // x/y/length slots line up with original Orca patches (empty z = same plane).
+    this.inputs.set("z", vec3(-4, 0, 0));
+    this.inputs.set("x", vec3(-3, 0, 0));
+    this.inputs.set("y", vec3(-2, 0, 0));
     this.inputs.set("length", vec3(-1, 0, 0));
   }
 
   override refreshDynamicInputs(): boolean {
-    const length = this.getIntInput("length", 1);
+    const length = this.getIntInput("length", 0, 1);
     if (length === this.prevLength) return false;
     const oldLength = this.prevLength;
     const x = this.getIntInput("x", 0);
@@ -59,7 +61,7 @@ export class G extends Cell {
     const x = this.getIntInput("x", 0);
     const y = this.getIntInput("y", 0);
     const z = this.getIntInput("z", 0);
-    const length = this.getIntInput("length", 1);
+    const length = this.getIntInput("length", 0, 1);
 
     this.refreshDynamicInputs();
 

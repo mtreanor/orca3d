@@ -17,9 +17,11 @@ export class X extends Cell {
   constructor(x: number, y: number, z: number) {
     super(x, y, z);
     this.type = "X";
-    this.inputs.set("x",     vec3(-3, 0, 0));
-    this.inputs.set("y",     vec3(-2, 0, 0));
-    this.inputs.set("z",     vec3(-1, 0, 0));
+    // z is the extra 3D operand and sits farthest from the operator, so the
+    // x/y slots line up with original Orca patches (empty z = same plane).
+    this.inputs.set("z",     vec3(-3, 0, 0));
+    this.inputs.set("x",     vec3(-2, 0, 0));
+    this.inputs.set("y",     vec3(-1, 0, 0));
     this.inputs.set("value", vec3(1, 0, 0));
     this.outputs.set("output", vec3(0, 1, 0));
   }
