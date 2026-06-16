@@ -29,6 +29,7 @@ export class CellPool {
 
   // Cap background-grid instances so a very large grid doesn't create 100k+ dot meshes.
   private static readonly MAX_BG_SIDE = 200;
+  private static readonly BG_DOT_MAJOR_SCALE = 2;
 
   // Ghost cells → small wireframe box
   private ghostMeshes = new Map<string, Mesh>();
@@ -49,9 +50,12 @@ export class CellPool {
   private static readonly FLASH_DURATION = 250;
 
   // Background grid
-  private bgMaster:    Mesh | null          = null;
-  private bgMat:       StandardMaterial | null = null;
-  private bgInstances: InstancedMesh[]      = [];
+  private bgMaster:       Mesh | null = null;
+  private bgMat:          StandardMaterial | null = null;
+  private bgInstances:    InstancedMesh[] = [];
+  private bgMajorMaster:  Mesh | null = null;
+  private bgMajorMat:     StandardMaterial | null = null;
+  private bgMajorInstances: InstancedMesh[] = [];
 
   constructor(scene: Scene, glow: GlowLayer, dims: GridDimensions) {
     this.scene = scene;
@@ -158,11 +162,17 @@ export class CellPool {
     for (const key of [...this.ghostMeshes.keys()]) this._removeGhost(key);
     for (const key of [...this.boxMeshes.keys()])   this._removeBox(key);
     for (const inst of this.bgInstances) inst.dispose();
+    for (const inst of this.bgMajorInstances) inst.dispose();
     this.bgMaster?.dispose();
+    this.bgMajorMaster?.dispose();
     this.bgMat?.dispose();
+    this.bgMajorMat?.dispose();
     this.bgInstances = [];
-    this.bgMaster    = null;
-    this.bgMat       = null;
+    this.bgMajorInstances = [];
+    this.bgMaster = null;
+    this.bgMajorMaster = null;
+    this.bgMat = null;
+    this.bgMajorMat = null;
   }
 
   flash(positions: [number, number, number][]) {
@@ -269,6 +279,10 @@ export class CellPool {
     if (mat)  { mat.dispose(); this.boxMats.delete(key); }
   }
 
+  private _bgMajorCapacity(cap: number): number {
+    return Math.ceil(cap / 8) * Math.ceil(cap / 8);
+  }
+
   resize(dims: GridDimensions) {
     this.dims = dims;
     const cap  = CellPool.MAX_BG_SIDE;
@@ -280,6 +294,16 @@ export class CellPool {
         const inst = this.bgMaster!.createInstance(`bgDot_${i}`);
         inst.isPickable = false;
         this.bgInstances.push(inst);
+      }
+    }
+    const majorNeed = this._bgMajorCapacity(cap);
+    if (majorNeed > this.bgMajorInstances.length) {
+      for (const inst of this.bgMajorInstances) inst.dispose();
+      this.bgMajorInstances = [];
+      for (let i = 0; i < majorNeed; i++) {
+        const inst = this.bgMajorMaster!.createInstance(`bgMajorDot_${i}`);
+        inst.isPickable = false;
+        this.bgMajorInstances.push(inst);
       }
     }
     this._repositionBackground();
@@ -298,6 +322,17 @@ export class CellPool {
     this.bgMaster.isPickable = false;
     this.bgMaster.isVisible  = false;
 
+    this.bgMajorMat = new StandardMaterial("bgMajorMat", this.scene);
+    this.bgMajorMat.diffuseColor    = Color3.FromHexString(THEME.gridDotDiffuse);
+    this.bgMajorMat.emissiveColor   = Color3.FromHexString(THEME.gridDotEmissive);
+    this.bgMajorMat.alpha           = THEME.gridDotMajorAlpha;
+    this.bgMajorMat.backFaceCulling = false;
+
+    this.bgMajorMaster = MeshBuilder.CreateBox("bgMajorMaster", { size: DOT }, this.scene);
+    this.bgMajorMaster.material  = this.bgMajorMat;
+    this.bgMajorMaster.isPickable = false;
+    this.bgMajorMaster.isVisible  = false;
+
     const cap     = CellPool.MAX_BG_SIDE;
     const maxSide = Math.min(Math.max(this.dims.width, this.dims.depth), cap);
     const count   = maxSide * Math.min(this.dims.height, cap);
@@ -306,7 +341,17 @@ export class CellPool {
       inst.isPickable = false;
       this.bgInstances.push(inst);
     }
+    const majorCount = this._bgMajorCapacity(cap);
+    for (let i = 0; i < majorCount; i++) {
+      const inst = this.bgMajorMaster.createInstance(`bgMajorDot_${i}`);
+      inst.isPickable = false;
+      this.bgMajorInstances.push(inst);
+    }
     this._repositionBackground();
+  }
+
+  private _isMajorGridPoint(x: number, y: number, z: number): boolean {
+    return x % 8 === 0 && y % 8 === 0 && z % 8 === 0;
   }
 
   private _repositionBackground() {
@@ -315,16 +360,28 @@ export class CellPool {
     const sliceB = Math.min(this.dims.height, cap);
 
     let i = 0;
+    let mi = 0;
     for (let a = 0; a < sliceA; a++) {
       for (let b = 0; b < sliceB; b++) {
-        const p = this.planeMode === "xy"
-          ? cellToWorld(a, b, this.sliceIndex)
-          : cellToWorld(this.sliceIndex, b, a);
-        this.bgInstances[i].position.set(p.x, p.y, p.z);
-        this.bgInstances[i].isVisible = true;
+        const gx = this.planeMode === "xy" ? a : this.sliceIndex;
+        const gy = b;
+        const gz = this.planeMode === "xy" ? this.sliceIndex : a;
+        const p  = cellToWorld(gx, gy, gz);
+        const inst = this.bgInstances[i];
+        inst.position.set(p.x, p.y, p.z);
+        inst.scaling.set(1, 1, 1);
+        const major = this._isMajorGridPoint(gx, gy, gz);
+        inst.isVisible = !major;
+        if (major) {
+          const majorInst = this.bgMajorInstances[mi++];
+          majorInst.position.set(p.x, p.y, p.z);
+          majorInst.scaling.set(CellPool.BG_DOT_MAJOR_SCALE, CellPool.BG_DOT_MAJOR_SCALE, CellPool.BG_DOT_MAJOR_SCALE);
+          majorInst.isVisible = true;
+        }
         i++;
       }
     }
     for (; i < this.bgInstances.length; i++) this.bgInstances[i].isVisible = false;
+    for (; mi < this.bgMajorInstances.length; mi++) this.bgMajorInstances[mi].isVisible = false;
   }
 }

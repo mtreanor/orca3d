@@ -23,6 +23,7 @@ export const THEME = {
   gridDotDiffuse:       "#1a1f33",
   gridDotEmissive:      "#080a14",
   gridDotAlpha:         0.18,
+  gridDotMajorAlpha:    0.32,
 
   // ── Glyph texture background (canvas fill behind each character) ─────────
   textureBackground:    "#000008",

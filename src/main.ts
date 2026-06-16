@@ -6,6 +6,7 @@ import { loadPatch, patchContentCenter, saveAsFile, uploadPatch, uploadOrca } fr
 import { GridAdapter } from "./renderer/gridView.js";
 import type { GridView } from "./renderer/gridView.js";
 import { Renderer } from "./renderer/renderer.js";
+import { gridStartCursor } from "./renderer/layout.js";
 
 async function main() {
   const canvas = document.getElementById("canvas") as HTMLCanvasElement;
@@ -15,18 +16,8 @@ async function main() {
   const sched = new Scheduler(seq, midi);
   const keys  = new KeyboardInput(seq, sched);
 
-  // Start cursor in the centre of the cube
-  keys.cursor.x = Math.floor(seq.width  / 2);
-  keys.cursor.y = Math.floor(seq.height / 2);
-  keys.cursor.z = Math.floor(seq.depth  / 2);
-
   const grid     = new GridAdapter(seq);
   const renderer = new Renderer(canvas, grid, keys.cursor);
-
-  grid.setCursor(keys.cursor.x, keys.cursor.y, keys.cursor.z);
-
-  renderer.onCellPick  = (x, y, z) => { keys.jumpTo(x, y, z); keys.clearSelection(); };
-  grid.onMidiFlash     = (positions) => renderer.flashCells(positions);
 
   keys.onCursorMove = () => {
     grid.setCursor(keys.cursor.x, keys.cursor.y, keys.cursor.z);
@@ -34,6 +25,13 @@ async function main() {
     updateHUD(seq, keys);
     updateHint(grid, keys);
   };
+
+  const start = gridStartCursor(seq.width, seq.height, seq.depth);
+  keys.cursor.planeMode = "xy";
+  keys.jumpTo(start.x, start.y, start.z);
+
+  renderer.onCellPick  = (x, y, z) => { keys.jumpTo(x, y, z); keys.clearSelection(); };
+  grid.onMidiFlash     = (positions) => renderer.flashCells(positions);
 
   keys.onSelectionChange = (sel) => {
     renderer.setSelection(sel);

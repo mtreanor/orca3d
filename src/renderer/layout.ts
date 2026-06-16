@@ -20,6 +20,22 @@ export function gridCenter(width: number, height: number, depth: number) {
   };
 }
 
+/** Nearest multiple of `step` to the grid centre, clamped to valid cell indices. */
+export function nearestAlignedCoord(gridSize: number, step = 8): number {
+  const center = Math.floor(gridSize / 2);
+  const aligned = Math.round(center / step) * step;
+  return Math.max(0, Math.min(gridSize - 1, aligned));
+}
+
+/** Start cursor on an XY slice (z % 8 === 0) at the nearest major grid intersection to centre. */
+export function gridStartCursor(width: number, height: number, depth: number) {
+  return {
+    x: nearestAlignedCoord(width),
+    y: nearestAlignedCoord(height),
+    z: nearestAlignedCoord(depth),
+  };
+}
+
 // Opacity of a layer relative to the active layer
 export function layerOpacity(z: number, activeZ: number): number {
   const dist = Math.abs(z - activeZ);

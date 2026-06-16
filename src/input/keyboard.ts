@@ -230,14 +230,13 @@ export class KeyboardInput {
       if (/^[A-Z*:!#]$/.test(ch) || /^[0-9a-z]$/.test(ch)) {
         const { x, y, z } = this.cursor;
         this.seq.modifyCell(x, y, z, ch);
-        // Auto-orient operator to face into the active editing plane
+        // Auto-orient operator into the active editing plane with red (a) on screen-left.
         const placed = this.seq.getCell(x, y, z);
         if (placed.isOperator()) {
-          const facesZ = placed.forward.z !== 0;
-          if (this.cursor.planeMode === "zy" && !facesZ) {
-            this.seq.rotateOperator(x, y, z, "Y_POS");
-          } else if (this.cursor.planeMode === "xy" && facesZ) {
-            this.seq.rotateOperator(x, y, z, "Y_POS");
+          if (this.cursor.planeMode === "zy") {
+            this.seq.reorientOperator(x, y, z, 0, 1);
+          } else {
+            this.seq.reorientOperator(x, y, z, 1, 0);
           }
         }
         this.onCursorMove?.();

@@ -23,7 +23,7 @@ export function createScene(canvas: HTMLCanvasElement, dims: GridDimensions): Ar
   const target = new Vector3(center.x, center.y, center.z);
 
   const worldSpan = Math.max(dims.width, dims.height, dims.depth) * CELL_STRIDE;
-  const camera = new ArcRotateCamera("cam", -Math.PI * 0.35, Math.PI * 0.38, 32, target, scene);
+  const camera = new ArcRotateCamera("cam", Math.PI * 0.35, Math.PI * 0.38, 32, target, scene);
   camera.lowerRadiusLimit    = 5;
   camera.upperRadiusLimit    = worldSpan * 1.5;
   camera.lowerBetaLimit      = 0.1;          // prevent flipping under the grid
